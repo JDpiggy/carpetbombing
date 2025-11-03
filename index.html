@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Carpet Bombing 3: Web Edition</title>
+  <style>
+    body { background: #111; }
+    canvas {
+      background: #76aaf8; /* Sky blue */
+      display: block; margin: 24px auto;
+      border: 2px solid #252525;
+      box-shadow: 0 3px 25px #222;
+      border-radius: 10px;
+    }
+    #info {
+      color: #fff;
+      font-family: monospace;
+      text-align: center;
+      margin-top: -18px;
+    }
+  </style>
+</head>
+<body>
+  <div id="info">
+    <b>Controls:</b> WASD / Arrow keys or Mouse, Space/Click to drop bomb. <br>
+    Collect fuel cans! Avoid terrain. Bomb tanks for score.
+  </div>
+  <canvas id="gameCanvas" width="900" height="600"></canvas>
+  <script src="game.js"></script>
+</body>
+</html>
