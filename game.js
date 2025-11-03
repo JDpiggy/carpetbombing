@@ -1,33 +1,13 @@
-// game.js
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// ---- Asset placeholders (swap for PNG sprites later) ----
-function drawPlane(x, y, direction) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(direction);
-  ctx.fillStyle = "#eaeaea";
-  ctx.fillRect(-32, -12, 64, 24); // body
-  ctx.fillStyle = "#5077bb";
-  ctx.fillRect(-28, -8, 12, 16); // tail
-  ctx.restore();
-}
-
-function drawBomb(x, y) {
-  ctx.beginPath();
-  ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.fillStyle = "#222"; ctx.fill();
-  ctx.strokeStyle = "#444"; ctx.lineWidth = 2; ctx.stroke();
-}
-
-function drawExplosion(x, y, radius) {
-  ctx.beginPath();
-  ctx.arc(x, y, radius, 0, Math.PI * 2); ctx.fillStyle = "#fce354"; ctx.fill();
-  ctx.globalAlpha = 0.6;
-  ctx.beginPath();
-  ctx.arc(x, y, radius * 1.5, 0, Math.PI * 2); ctx.fillStyle = "#fa825a"; ctx.fill();
-  ctx.globalAlpha = 1;
-}
+// ---- Load image assets ----
+const planeImg = new Image(); planeImg.src = "plane.png";
+const bombImg = new Image(); bombImg.src = "bomb.png";
+const terrainImg = new Image(); terrainImg.src = "terrain.png";
+const explosionImg = new Image(); explosionImg.src = "explosion.png";
+const tankImg = new Image(); tankImg.src = "tank.png";
+const fuelcanImg = new Image(); fuelcanImg.src = "fuelcan.png";
 
 // ---- Terrain ----
 function genTerrain(width, height, segments) {
@@ -43,15 +23,16 @@ function genTerrain(width, height, segments) {
 }
 
 function drawTerrain(arr) {
-  ctx.beginPath();
-  ctx.moveTo(0, canvas.height);
-  for (let p of arr) ctx.lineTo(p.x, p.y);
-  ctx.lineTo(canvas.width, canvas.height);
-  ctx.closePath();
-  ctx.fillStyle = "#2f5b25";
-  ctx.fill();
-  ctx.strokeStyle = "#20531c"; ctx.lineWidth = 4;
-  ctx.stroke();
+  // Stretch terrain image between each segment
+  for (let i=0; i<arr.length-1; i++) {
+    let p0=arr[i], p1=arr[i+1];
+    let w=p1.x-p0.x, h=canvas.height-p0.y;
+    ctx.drawImage(terrainImg, p0.x, p0.y, w, h);
+  }
+  // Optionally, draw outline for debug:
+  // ctx.beginPath();
+  // for (let p of arr) ctx.lineTo(p.x, p.y);
+  // ctx.strokeStyle="#20531c";ctx.lineWidth=2;ctx.stroke();
 }
 
 // Ray hit test for terrain collision
@@ -76,7 +57,6 @@ let bombs = [];
 let explosions = [];
 let tanks = [];
 let fuelCans = [];
-
 let terrain = genTerrain(canvas.width, canvas.height, 35);
 
 // ---- Player ----
@@ -94,7 +74,6 @@ function respawnFuel() {
   fuelCans.push({x: x, y: terrainY(x)-16, alive: true});
 }
 function terrainY(x) {
-  // Get terrain Y for any X (linear interp between points)
   for (let i = 0; i < terrain.length-1; i++) {
     let p0 = terrain[i], p1 = terrain[i+1];
     if (x >= p0.x && x <= p1.x)
@@ -133,11 +112,10 @@ function gameLoop() {
 function update() {
   if (!plane.alive) return;
 
-  plane.fuel -= 0.09; // Fuel drains slowly
+  plane.fuel -= 0.09;
   if (plane.fuel <= 0) { plane.alive = false; }
 
-  // Move
-  if (useMouse) { // Mouse follows smoothly
+  if (useMouse) {
     plane.x += (mouse.x-plane.x)*0.09;
     plane.y += (mouse.y-plane.y)*0.09;
     let dx = (mouse.x-plane.x), dy = (mouse.y-plane.y);
@@ -153,18 +131,14 @@ function update() {
   plane.x = Math.max(32, Math.min(canvas.width-32, plane.x));
   plane.y = Math.max(32, Math.min(canvas.height-36, plane.y));
 
-  // Terrain collision
   if (planeHitTerrain(plane, terrain)) plane.alive = false;
 
-  // Bombs update
   for (let bomb of bombs) {
     bomb.y += bomb.speed;
-    // Hit terrain
     const by = terrainY(bomb.x);
     if (bomb.y > by-4 && !bomb.exploded) {
       bomb.exploded = true;
       explosions.push({x:bomb.x, y:by-2, radius:3, life:18});
-      // Destroy tanks
       tanks.forEach(t=>{
         const dist = Math.hypot(t.x-bomb.x,t.y-bomb.y);
         if (dist<32&&t.alive) {t.alive=false; plane.score+=50;}
@@ -173,7 +147,6 @@ function update() {
   }
   bombs = bombs.filter(b => b.y < canvas.height && !b.exploded);
 
-  // Explosions animate
   for (let ex of explosions) {
     ex.radius += 2;
     ex.life -= 1;
@@ -183,7 +156,6 @@ function update() {
   tanks = tanks.filter(t=>t.alive);
   while (tanks.length < 4) respawnTank();
 
-  // Fuel cans
   fuelCans = fuelCans.filter(t=>t.alive);
   while (fuelCans.length < 2) respawnFuel();
   fuelCans.forEach(f=>{
@@ -198,33 +170,30 @@ function draw() {
 
   drawTerrain(terrain);
 
-  // Draw tanks
   for (let tank of tanks) {
     if (tank.alive)
-      ctx.fillStyle = "#be230b", ctx.fillRect(tank.x-18, tank.y-12, 36, 16),
-      ctx.fillStyle = "#533", ctx.fillRect(tank.x-6, tank.y-24,12,12),
-      ctx.font="12px monospace",ctx.fillStyle="#fff",ctx.fillText("TANK",tank.x-15,tank.y-16);
+      ctx.drawImage(tankImg, tank.x-18, tank.y-12, 36, 24);
   }
 
-  // Draw fuel cans
   for (let f of fuelCans) {
     if (f.alive)
-      ctx.fillStyle = "#ffee10", ctx.beginPath(), ctx.arc(f.x, f.y, 13, 0, Math.PI*2), ctx.fill(),
-      ctx.font="12px monospace",ctx.fillStyle="#111",ctx.fillText("Fuel",f.x-13,f.y+5);
+      ctx.drawImage(fuelcanImg, f.x-13, f.y-13, 26, 26);
   }
 
-  // Draw bombs
   for (let bomb of bombs)
-    drawBomb(bomb.x, bomb.y);
+    ctx.drawImage(bombImg, bomb.x-8, bomb.y-8, 16, 16);
 
-  // Explosions
   for (let ex of explosions)
-    drawExplosion(ex.x, ex.y, ex.radius);
+    ctx.drawImage(explosionImg, ex.x-ex.radius, ex.y-ex.radius, ex.radius*2, ex.radius*2);
 
-  // Draw plane
-  if (plane.alive) drawPlane(plane.x, plane.y, plane.dir);
+  if (plane.alive) {
+    ctx.save();
+    ctx.translate(plane.x, plane.y);
+    ctx.rotate(plane.dir);
+    ctx.drawImage(planeImg, -32, -16, 64, 32);
+    ctx.restore();
+  }
 
-  // HUD
   ctx.font="bold 24px monospace";
   ctx.fillStyle = "#fff";
   ctx.fillText(`Score: ${plane.score}`, 30, 38);
@@ -243,5 +212,4 @@ function draw() {
   }
 }
 
-// Launch!
 gameLoop();
